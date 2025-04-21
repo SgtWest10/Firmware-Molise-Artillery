@@ -58,10 +58,10 @@
  *
  *   L #  Layer       Layer height. (Height of nozzle above bed)  If not specified .20mm will be used.
  *
- *   O #  Ooooze      How much your nozzle will Ooooze filament while getting in position to print. This
- *                    is over kill, but using this parameter will let you get the very first 'circle' perfect
- *                    so you have a trophy to peel off of the bed and hang up to show how perfectly you have your
- *                    Mesh calibrated. If not specified, a filament length of .3mm is assumed.
+ *   O #  Ooze        How much your nozzle will Ooooze filament while getting in position to print. If not
+ *                    specified, a filament length of .3mm is assumed. This might be overkill, but this
+ *                    parameter ensures the very first 'circle' is perfect (providing an ideal trophy to hang
+ *                    up to show off your perfectly calibrated Mesh).
  *
  *   P #  Prime       Prime the nozzle with specified length of filament. If this parameter is not
  *                    given, no prime action will take place. If the parameter specifies an amount, that much
@@ -102,7 +102,7 @@
 #define G26_OK false
 #define G26_ERR true
 
-#include "../../gcode/gcode.h"
+#include "../gcode.h"
 #include "../../feature/bedlevel/bedlevel.h"
 
 #include "../../MarlinCore.h"
@@ -628,7 +628,7 @@ void GcodeSuite::G26() {
   }
 
   // Get repeat from 'R', otherwise do one full circuit
-  int16_t g26_repeats;
+  grid_count_t g26_repeats;
   #if HAS_MARLINUI_MENU
     g26_repeats = parser.intval('R', GRID_MAX_POINTS + 1);
   #else
@@ -707,7 +707,7 @@ void GcodeSuite::G26() {
       #error "A_CNT must be a positive value. Please change A_INT."
     #endif
     float trig_table[A_CNT];
-    LOOP_L_N(i, A_CNT)
+    for (uint8_t i = 0; i < A_CNT; ++i)
       trig_table[i] = INTERSECTION_CIRCLE_RADIUS * cos(RADIANS(i * A_INT));
 
   #endif // !ARC_SUPPORT

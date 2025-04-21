@@ -28,6 +28,10 @@
 #include "../../module/planner.h"
 #include "../../module/stepper.h" // for various
 
+#if HAS_HOMING_CURRENT
+  #include "../../module/motion.h" // for set/restore_homing_current
+#endif
+
 #if HAS_MULTI_HOTEND
   #include "../../module/tool_change.h"
 #endif
@@ -44,7 +48,9 @@
   #include "../../feature/tmc_util.h"
 #endif
 
-#include "../../module/probe.h"
+#if HAS_BED_PROBE
+  #include "../../module/probe.h"
+#endif
 
 #if ENABLED(BLTOUCH)
   #include "../../feature/bltouch.h"
@@ -86,7 +92,7 @@
         NUM_AXIS_LIST(
           TERN0(X_SENSORLESS, tmc_enable_stallguard(stepperX)),
           TERN0(Y_SENSORLESS, tmc_enable_stallguard(stepperY)),
-          false, false, false, false
+          false, false, false, false, false, false, false
         )
         , TERN0(X2_SENSORLESS, tmc_enable_stallguard(stepperX2))
         , TERN0(Y2_SENSORLESS, tmc_enable_stallguard(stepperY2))
@@ -124,14 +130,7 @@
      * (Z is already at the right height)
      */
     constexpr xy_float_t safe_homing_xy = { Z_SAFE_HOMING_X_POINT, Z_SAFE_HOMING_Y_POINT };
-    #if HAS_HOME_OFFSET
-      xy_float_t okay_homing_xy = safe_homing_xy;
-      okay_homing_xy -= home_offset;
-    #else
-      constexpr xy_float_t okay_homing_xy = safe_homing_xy;
-    #endif
-
-    destination.set(okay_homing_xy, current_position.z);
+    destination.set(safe_homing_xy, current_position.z);
 
     TERN_(HOMING_Z_WITH_PROBE, destination -= probe.offset_xy);
 
@@ -468,7 +467,7 @@ void GcodeSuite::G28() {
       #endif
     }
 
-    #if BOTH(FOAMCUTTER_XYUV, HAS_I_AXIS)
+    #if ALL(FOAMCUTTER_XYUV, HAS_I_AXIS)
       // Home I (after X)
       if (doI) homeaxis(I_AXIS);
     #endif
@@ -479,7 +478,7 @@ void GcodeSuite::G28() {
         homeaxis(Y_AXIS);
     #endif
 
-    #if BOTH(FOAMCUTTER_XYUV, HAS_J_AXIS)
+    #if ALL(FOAMCUTTER_XYUV, HAS_J_AXIS)
       // Home J (after Y)
       if (doJ) homeaxis(J_AXIS);
     #endif
@@ -493,7 +492,7 @@ void GcodeSuite::G28() {
       // Home Z last if homing towards the bed
       #if HAS_Z_AXIS && DISABLED(HOME_Z_FIRST)
         if (doZ) {
-          #if EITHER(Z_MULTI_ENDSTOPS, Z_STEPPER_AUTO_ALIGN)
+          #if ANY(Z_MULTI_ENDSTOPS, Z_STEPPER_AUTO_ALIGN)
             stepper.set_all_z_lock(false);
             stepper.set_separate_multi_axis(false);
           #endif
@@ -503,7 +502,7 @@ void GcodeSuite::G28() {
           #else
             homeaxis(Z_AXIS);
           #endif
-          probe.move_z_after_homing();
+          TERN_(HAS_BED_PROBE, probe.move_z_after_homing());
         }
       #endif
 
